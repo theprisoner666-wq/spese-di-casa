@@ -1,11 +1,10 @@
-// Configurazione del progetto Firebase.
-// Si copia dalla console Firebase: Impostazioni progetto -> Le tue app -> App web -> "Configurazione SDK" (scelta "Config").
+// Configurazione del progetto Firebase "spese-casa-raff".
 // Non e' una password: e' fatta per stare dentro l'app. I dati li proteggono le regole di Firestore.
 export const firebaseConfig = {
-  apiKey: "INCOLLA_QUI",
-  authDomain: "INCOLLA_QUI",
-  projectId: "INCOLLA_QUI",
-  storageBucket: "INCOLLA_QUI",
-  messagingSenderId: "INCOLLA_QUI",
-  appId: "INCOLLA_QUI",
+  apiKey: "AIzaSyBCWUMoxOE4hPzs9FKzcU9Pd82avDKqtow",
+  authDomain: "spese-casa-raff.firebaseapp.com",
+  projectId: "spese-casa-raff",
+  storageBucket: "spese-casa-raff.firebasestorage.app",
+  messagingSenderId: "399853352458",
+  appId: "1:399853352458:web:f8f446777088f863e4d1f3",
 };
