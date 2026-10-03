@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E6B58">
+<title>Spese di Casa</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{
+  --bg:#EEF2EF; --surface:#FFFFFF; --sunk:#E3E9E5; --ink:#18241F; --muted:#5E6E67; --line:#D3DCD7;
+  --accent:#0E6B58; --accent-ink:#FFFFFF; --accent-soft:#D5EAE3; --danger:#B3261E; --danger-soft:#F8DEDB;
+  --c-alimentari:#2E8B57; --c-bollette:#C98A0B; --c-casa:#8C5A3C; --c-mutuo:#3F5BA9;
+  --c-trasporti:#2C8FA8; --c-salute:#C0435A; --c-svago:#7E57C2; --c-altro:#7A8580;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#121916; --surface:#1A2320; --sunk:#222D29; --ink:#E6EEEA; --muted:#98A8A1; --line:#2E3B36;
+    --accent:#4CC3A4; --accent-ink:#0B1A15; --accent-soft:#1D3A32; --danger:#F08A80; --danger-soft:#3A2220;
+    --c-alimentari:#5CC18A; --c-bollette:#E3B03E; --c-casa:#C08A68; --c-mutuo:#7C96E0;
+    --c-trasporti:#5BBCD4; --c-salute:#E77B90; --c-svago:#A88AE6; --c-altro:#9AA5A0;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#121916; --surface:#1A2320; --sunk:#222D29; --ink:#E6EEEA; --muted:#98A8A1; --line:#2E3B36;
+  --accent:#4CC3A4; --accent-ink:#0B1A15; --accent-soft:#1D3A32; --danger:#F08A80; --danger-soft:#3A2220;
+  --c-alimentari:#5CC18A; --c-bollette:#E3B03E; --c-casa:#C08A68; --c-mutuo:#7C96E0;
+  --c-trasporti:#5BBCD4; --c-salute:#E77B90; --c-svago:#A88AE6; --c-altro:#9AA5A0;
+}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+.status.wait .dot{background:#C98A0B}
+.account{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.account .link{font-size:13px;padding:2px 0}
+.login{max-width:380px;margin:0 auto;padding-inline:16px;padding-block:18vh 40px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.login img{border-radius:18px}
+.login p{margin:0;color:var(--muted)}
+.login .primary{width:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:640px;margin:0 auto;padding-inline:16px;padding-block:18px 48px;display:flex;flex-direction:column;gap:18px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.status.ok .dot{background:var(--accent)} .status.err .dot{background:var(--danger)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Mese */
+.month{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.month h2{font-family:var(--display);font-weight:600;font-size:18px;margin:0;text-transform:capitalize}
+.nav{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:18px;display:grid;place-items:center}
+.nav:disabled{opacity:.35;cursor:default}
+
+.summary{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.total-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.total{font-family:var(--mono);font-weight:600;font-size:34px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.delta{font-size:13px;color:var(--muted)}
+.delta b{font-family:var(--mono);font-weight:600}
+.delta.up b{color:var(--danger)} .delta.down b{color:var(--accent)}
+.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--sunk)}
+.bar span{display:block;height:100%}
+.cats{display:grid;grid-template-columns:1fr auto auto;gap:6px 12px;font-size:14px;align-items:center}
+.cats .n{display:flex;align-items:center;gap:8px}
+.sw{width:10px;height:10px;border-radius:3px;flex:none}
+.cats .v{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.cats .p{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right;min-width:3.2em}
+.quota-line{font-size:13px;color:var(--muted)}
+.quota-line b{font-family:var(--mono);color:var(--ink)}
+
+.saldi{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.saldi h3{margin:0;font-family:var(--display);font-weight:600;font-size:17px}
+.saldo{display:flex;justify-content:space-between;gap:12px;align-items:baseline;font-size:14px;padding-block:6px;border-bottom:1px solid var(--line)}
+.saldo:last-child{border-bottom:0}
+.saldo b{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.saldo.avere b{color:var(--accent)} .saldo.dare b{color:var(--danger)}
+
+/* Form */
+form{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:14px}
+form.editing{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.form-head h3{margin:0;font-family:var(--display);font-weight:600;font-size:17px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:420px){.row{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;min-width:0}
+#f-importo{font-family:var(--mono);font-size:22px;font-weight:600;padding-left:30px}
+.amount{position:relative}
+.amount::before{content:"€";position:absolute;left:12px;top:50%;transform:translateY(-50%);font-family:var(--mono);color:var(--muted);font-size:16px}
+.amount input{padding-left:30px;font-family:var(--mono);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);font-size:14px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.block{display:flex;flex-direction:column;gap:10px;padding-top:12px;border-top:1px solid var(--line)}
+.check{display:flex;align-items:center;gap:10px;font-weight:500;cursor:pointer}
+.check input{width:20px;height:20px;accent-color:var(--accent);margin:0;flex:none;padding:0}
+.check:has(input:disabled){opacity:.45;cursor:default}
+.hint{font-size:13px;color:var(--muted)}
+.hint b{font-family:var(--mono);color:var(--ink)}
+.hint.err{color:var(--danger)}
+
+/* Persone della divisione */
+.parts{display:flex;flex-direction:column;gap:8px}
+.split{display:flex;flex-direction:column;gap:12px}
+.parts-h{display:grid;grid-template-columns:minmax(0,1fr) 116px;gap:8px}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) 116px;gap:6px 8px;align-items:center;padding:10px;border-radius:12px;background:var(--bg)}
+.split.uguali .prow,.split.uguali .parts-h{grid-template-columns:minmax(0,1fr)}
+.split.uguali .p-extra,.split.uguali .parts-h span:nth-child(2){display:none}
+.prow input{background:var(--surface)}
+.prow .fisso{padding:6px 2px;font-weight:600}
+.pick{display:flex;flex-direction:column;gap:8px}
+.p-foot{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.p-foot b{font-family:var(--mono);font-size:15px;color:var(--ink)}
+.p-foot .check{font-size:13px;font-weight:500;color:var(--ink)}
+.p-foot .check input{width:18px;height:18px}
+.add{align-self:flex-start;background:none;border:1px dashed var(--line);border-radius:10px;padding:8px 12px;color:var(--accent);font-weight:600}
+
+.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--sunk);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:transparent;border-radius:9px;padding:10px 6px;font-size:14px;font-weight:500}
+.seg button[aria-checked="true"]{background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg button[data-v="dare"][aria-checked="true"]{color:var(--danger)}
+.seg button[data-v="avere"][aria-checked="true"]{color:var(--accent)}
+.off{opacity:.45}
+.seg.two{grid-template-columns:1fr 1fr}
+.seg button[data-m][aria-checked="true"]{color:var(--accent)}
+.inline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px}
+.inline input{width:84px;font-family:var(--mono);font-weight:600;text-align:center}
+
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.primary{flex:1;min-width:160px;background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;padding:13px 16px;font-weight:600;font-size:16px}
+.primary:disabled{opacity:.5;cursor:default}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.del-btn{color:var(--danger);border-color:var(--danger)}
+.msg{font-size:13px;min-height:1em;margin:0}
+.msg.err{color:var(--danger)} .msg.ok{color:var(--accent)}
+.confirm{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--danger-soft);border-radius:10px;padding:10px 12px;font-size:14px}
+.confirm .del{background:var(--danger);color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:600}
+
+/* Lista */
+.list-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.list-head h3{margin:0;font-family:var(--display);font-weight:600;font-size:17px}
+.list-actions{display:flex;gap:16px;flex-wrap:wrap}
+#copy-slot{display:flex;flex-direction:column;gap:8px}
+#copy-slot:not(:empty){padding-block:8px}
+#copy-slot textarea{font-family:var(--mono);font-size:12px;width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px}
+.hint.ok{color:var(--accent)}
+.link{background:none;border:0;color:var(--accent);font-weight:600;padding:6px 0}
+.day{display:flex;flex-direction:column}
+.day-h{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:12px 2px 6px;text-transform:capitalize;border-bottom:1px solid var(--line)}
+.day-h span:last-child{font-family:var(--mono)}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:12px 2px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;width:100%}
+.item .sw{margin-top:6px}
+.item:hover{background:var(--sunk)}
+.item .t{display:flex;flex-direction:column;min-width:0}
+.item .c{font-weight:500}
+.item .no{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.item .a{font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.tag{font-size:12px;padding:2px 8px;border-radius:6px;background:var(--sunk);color:var(--muted)}
+.tag.dare{background:var(--danger-soft);color:var(--danger)}
+.tag.avere{background:var(--accent-soft);color:var(--accent)}
+.tag.chiuso{text-decoration:line-through;opacity:.7}
+.empty{padding:28px 18px;text-align:center;color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:16px}
+.empty strong{display:block;color:var(--ink);font-family:var(--display);font-size:17px;margin-bottom:4px}
+@media (prefers-reduced-motion:no-preference){.item,.chip,.primary{transition:background .15s,color .15s}}
+</style>
+</head>
+<body>
+
+<div class="login" id="login">
+  <img src="icon-192.png" alt="" width="72" height="72">
+  <h1>Spese di Casa</h1>
+  <p id="login-p">Accedi con il tuo account Google per vedere e registrare le spese.</p>
+  <button class="primary" id="login-btn" type="button">Accedi con Google</button>
+  <p class="msg err" id="login-msg"></p>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header>
+    <h1>Spese di Casa</h1>
+    <div class="status" id="status"><span class="dot"></span><span id="status-t">Collegamento all'archivio…</span></div>
+    <div class="account"><span id="account"></span><button class="link" id="logout" type="button">Esci</button></div>
+  </header>
+
+  <div class="month">
+    <button class="nav" id="prev" type="button" aria-label="Mese precedente">‹</button>
+    <h2 id="month-t">—</h2>
+    <button class="nav" id="next" type="button" aria-label="Mese successivo">›</button>
+  </div>
+
+  <section class="summary" aria-label="Riepilogo del mese">
+    <div class="total-row">
+      <div>
+        <div class="label">Speso nel mese</div>
+        <div class="total" id="total">€ 0,00</div>
+        <div class="quota-line" id="quota-tot" hidden></div>
+      </div>
+      <div class="delta" id="delta"></div>
+    </div>
+    <div class="bar" id="bar"></div>
+    <div class="cats" id="cats"></div>
+  </section>
+
+  <section class="saldi" id="saldi" aria-label="Saldi aperti" hidden>
+    <h3>Saldi aperti</h3>
+    <div id="saldi-list"></div>
+  </section>
+
+  <form id="form" autocomplete="off" novalidate>
+    <div class="form-head"><h3 id="form-t">Nuova spesa</h3></div>
+    <div class="row">
+      <div class="field">
+        <label class="label" for="f-importo">Totale scontrino</label>
+        <div class="amount"><input id="f-importo" inputmode="decimal" placeholder="0,00"></div>
+      </div>
+      <div class="field">
+        <label class="label" for="f-data">Data</label>
+        <input id="f-data" type="date">
+      </div>
+    </div>
+    <div class="field">
+      <span class="label" id="cat-l">Categoria</span>
+      <div class="chips" id="chips" role="group" aria-labelledby="cat-l"></div>
+    </div>
+
+    <div class="block">
+      <label class="check"><input type="checkbox" id="f-divisa"> Spesa divisa fra più persone</label>
+      <div class="split uguali" id="split" hidden>
+        <div class="seg two" id="modo" role="radiogroup" aria-label="Come dividere">
+          <button type="button" role="radio" data-m="uguali">In parti uguali</button>
+          <button type="button" role="radio" data-m="extra">Con extra per persona</button>
+        </div>
+        <div class="inline">
+          <label for="f-persone">Fra quante persone</label>
+          <input id="f-persone" type="number" min="2" max="20" step="1" inputmode="numeric" value="3">
+        </div>
+        <div class="pick" id="fam-pick" hidden>
+          <span class="hint" id="fam-hint"></span>
+          <div class="chips" id="fam-chips" role="group" aria-labelledby="fam-hint"></div>
+        </div>
+        <div class="parts">
+          <div class="parts-h label"><span>Persona</span><span>Extra solo suoi</span></div>
+          <div class="parts" id="parts"></div>
+        </div>
+        <p class="hint" id="split-sum"></p>
+        <div class="field">
+          <label class="label" for="f-pagatore">Chi ha pagato</label>
+          <select id="f-pagatore"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="block" id="mov-block">
+      <span class="label" id="mov-l">Dare / avere</span>
+      <div class="seg" id="seg" role="radiogroup" aria-labelledby="mov-l">
+        <button type="button" role="radio" data-v="nessuno">Nessuno</button>
+        <button type="button" role="radio" data-v="dare">Devo dare</button>
+        <button type="button" role="radio" data-v="avere">Devo avere</button>
+      </div>
+      <div class="row" id="mov-row">
+        <div class="field">
+          <label class="label" for="f-chi" id="chi-l">A / da chi</label>
+          <input id="f-chi" list="nomi" maxlength="40" placeholder="es. Francy" disabled>
+        </div>
+        <div class="field">
+          <label class="label" for="f-mov">Quanto</label>
+          <div class="amount"><input id="f-mov" inputmode="decimal" placeholder="0,00" disabled></div>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="f-saldato" disabled> Già saldato</label>
+    </div>
+    <datalist id="nomi"></datalist>
+
+    <div class="field">
+      <label class="label" for="f-nota">Nota (facoltativa)</label>
+      <input id="f-nota" maxlength="120" placeholder="es. Lidl, bolletta luce bimestre">
+    </div>
+    <div class="actions">
+      <button class="primary" id="save" type="submit" disabled>Registra spesa</button>
+      <button class="ghost del-btn" id="del" type="button" hidden>Elimina</button>
+      <button class="ghost" id="cancel" type="button" hidden>Annulla</button>
+    </div>
+    <div id="confirm-slot"></div>
+    <p class="msg" id="msg" role="status"></p>
+  </form>
+
+  <section aria-label="Movimenti del mese">
+    <div class="list-head">
+      <h3>Movimenti</h3>
+      <div class="list-actions">
+        <button class="link" id="copy" type="button" hidden>Copia per Fogli</button>
+        <button class="link" id="export" type="button" hidden>Esporta CSV</button>
+      </div>
+    </div>
+    <div id="copy-slot"></div>
+    <div id="list"></div>
+  </section>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "./firebase-config.js";
+
+(function(){
+  const CATS = [
+    {k:"alimentari", n:"Alimentari"},
+    {k:"bollette",   n:"Bollette"},
+    {k:"mutuo",      n:"Affitto / mutuo"},
+    {k:"casa",       n:"Casa e manutenzione"},
+    {k:"trasporti",  n:"Auto e trasporti"},
+    {k:"salute",     n:"Salute"},
+    {k:"svago",      n:"Svago"},
+    {k:"altro",      n:"Altro"},
+  ];
+  const CAT = Object.fromEntries(CATS.map(c=>[c.k,c]));
+  // La famiglia di riferimento: il primo e' il proprietario dell'app
+  const FAMIGLIA = ["Raffaele","Francy","Milene"];
+  const ME = FAMIGLIA[0];
+  const $ = id => document.getElementById(id);
+  const eur = new Intl.NumberFormat("it-IT",{style:"currency",currency:"EUR"});
+  const fmt = cents => eur.format(cents/100);
+  const toField = cents => (cents/100).toFixed(2).replace(".",",");
+  const pad = n => String(n).padStart(2,"0");
+  const todayISO = () => { const d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); };
+  const monthKey = d => d.getFullYear()+"-"+pad(d.getMonth()+1);
+  const nomeDi = p => p.io ? ME : p.nome;   // le prime prove salvavano "Io"
+
+  let db = null;   // il database Firestore, quando l'accesso e' fatto
+  let all = [];
+  let cur = new Date(); cur.setDate(1);
+  let selCat = "alimentari";
+  let editing = null, confirming = false;
+  let mov = "nessuno", movAuto = true;
+  // Divisione
+  let modo = "uguali";
+  let famSel = new Set();   // chi dei tre, quando si divide per 2
+  let altri = [];           // nomi delle persone oltre i tre
+  let extraBy = {}, salBy = {};   // per chiave persona: testo dell'extra, saldato
+  let payerKey = ME;        // chiave persona, oppure "comune"
+
+  function parseAmount(s){
+    s = String(s).trim().replace(/\s|€/g,"");
+    if(!s) return null;
+    if(s.includes(",")) s = s.replace(/\./g,"").replace(",",".");
+    if(!/^\d+(\.\d{1,2})?$/.test(s)) return null;
+    const c = Math.round(parseFloat(s)*100);
+    return c>0 ? c : null;
+  }
+  function parseExtra(s){
+    const t = String(s||"").trim().replace(/\s|€/g,"");
+    if(!t || /^0+([.,]0{1,2})?$/.test(t)) return 0;
+    const c = parseAmount(t); return c===null ? NaN : c;
+  }
+  const nPersone = () => { const n = parseInt($("f-persone").value,10); return n>=2 && n<=20 ? n : null; };
+
+  // Parte comune in parti uguali + extra di ciascuno; i centesimi di resto vanno ai primi
+  function computeQuote(total, extras){
+    const n = extras.length;
+    const sumEx = extras.reduce((s,x)=>s+x,0);
+    const common = total - sumEx;
+    const base = Math.floor(common/n), rem = common - base*n;
+    return { common, sumEx, base, quote: extras.map((x,i)=> base + (i<rem?1:0) + x) };
+  }
+
+  // Le persone della divisione, ricavate dal numero
+  function partList(){
+    const n = nPersone(); if(!n) return [];
+    if(n<3) return FAMIGLIA.filter(f=>famSel.has(f)).map(f=>({key:f, nome:f, io:f===ME, fisso:true}));
+    const l = FAMIGLIA.map(f=>({key:f, nome:f, io:f===ME, fisso:true}));
+    for(let i=0;i<n-3;i++) l.push({key:"altro"+i, nome:(altri[i]||"").trim(), io:false, fisso:false, idx:i});
+    return l;
+  }
+
+  function myQuota(r){
+    if(r.divisa && Array.isArray(r.partecipanti)){
+      const me = r.partecipanti.find(p=>p.io); return me ? me.quota : 0;
+    }
+    if(r.divisa && r.persone>=2) return Math.round(r.centesimi/r.persone);
+    return r.centesimi;
+  }
+  function debtsOf(r){
+    if(r.divisa && Array.isArray(r.partecipanti)){
+      if(!r.pagatore) return [];
+      const payerP = r.partecipanti.find(p=>p.nome===r.pagatore || (p.io && (r.pagatore==="Io" || r.pagatore===ME)));
+      if(!payerP) return [];
+      if(payerP.io) return r.partecipanti.filter(p=>!p.io && p.quota>0).map(p=>({persona:p.nome, tipo:"avere", cent:p.quota, saldato:!!p.saldato}));
+      const me = r.partecipanti.find(p=>p.io);
+      return me && me.quota>0 ? [{persona:payerP.nome, tipo:"dare", cent:me.quota, saldato:!!me.saldato}] : [];
+    }
+    if((r.movimento==="dare"||r.movimento==="avere") && r.persona && r.movCentesimi>0)
+      return [{persona:r.persona, tipo:r.movimento, cent:r.movCentesimi, saldato:!!r.saldato}];
+    return [];
+  }
+
+  // --- Categorie ---
+  function renderChips(){
+    const box = $("chips"); box.textContent = "";
+    CATS.forEach(c=>{
+      const b = document.createElement("button");
+      b.type="button"; b.className="chip"; b.setAttribute("aria-pressed", String(c.k===selCat));
+      const s=document.createElement("span"); s.className="sw"; s.style.background="var(--c-"+c.k+")";
+      b.append(s, document.createTextNode(c.n));
+      b.addEventListener("click",()=>{ selCat=c.k; renderChips(); });
+      box.append(b);
+    });
+  }
+
+  // --- Divisione ---
+  function renderSplit(){
+    $("split").classList.toggle("uguali", modo==="uguali");
+    [...$("modo").children].forEach(b=>b.setAttribute("aria-checked", String(b.dataset.m===modo)));
+    const n = nPersone();
+    // per 2: si sceglie fra i tre
+    const pick = n!==null && n<3;
+    $("fam-pick").hidden = !pick;
+    if(pick){
+      const fc=$("fam-chips"); fc.textContent="";
+      FAMIGLIA.forEach(f=>{
+        const b=document.createElement("button"); b.type="button"; b.className="chip";
+        b.setAttribute("aria-pressed", String(famSel.has(f))); b.textContent=f;
+        b.addEventListener("click",()=>{
+          if(famSel.has(f)) famSel.delete(f);
+          else { if(famSel.size>=n){ const first=[...famSel][0]; famSel.delete(first); } famSel.add(f); }
+          renderSplit();
+        });
+        fc.append(b);
+      });
+    }
+    const box=$("parts"); box.textContent="";
+    partList().forEach(p=>{
+      const row=document.createElement("div"); row.className="prow";
+      let nameEl;
+      if(p.fisso){ nameEl=document.createElement("span"); nameEl.className="fisso"; nameEl.textContent=p.io ? p.nome+" (tu)" : p.nome; }
+      else {
+        nameEl=document.createElement("input"); nameEl.id="p-nome-"+p.idx; nameEl.value=altri[p.idx]||""; nameEl.maxLength=40;
+        nameEl.placeholder="Nome della persona in più"; nameEl.setAttribute("list","nomi");
+        nameEl.setAttribute("aria-label","Nome persona in più "+(p.idx+1));
+        nameEl.addEventListener("input",()=>{ altri[p.idx]=nameEl.value; renderPayer(); updateQuote(); });
+      }
+      const am=document.createElement("div"); am.className="amount p-extra";
+      const ex=document.createElement("input"); ex.id="p-extra-"+p.key; ex.inputMode="decimal"; ex.placeholder="0,00"; ex.value=extraBy[p.key]||"";
+      ex.setAttribute("aria-label","Extra solo di "+(p.nome||"questa persona"));
+      ex.addEventListener("input",()=>{ extraBy[p.key]=ex.value; updateQuote(); });
+      am.append(ex);
+      const foot=document.createElement("div"); foot.className="p-foot";
+      const q=document.createElement("span"); q.append(document.createTextNode("quota "));
+      const qb=document.createElement("b"); qb.id="p-q-"+p.key; qb.textContent="—"; q.append(qb);
+      const sal=document.createElement("label"); sal.className="check"; sal.id="p-sal-l-"+p.key;
+      const cb=document.createElement("input"); cb.type="checkbox"; cb.id="p-sal-"+p.key; cb.checked=!!salBy[p.key];
+      cb.addEventListener("change",()=>{ salBy[p.key]=cb.checked; });
+      const st=document.createElement("span"); st.id="p-sal-t-"+p.key;
+      sal.append(cb, st);
+      foot.append(q, sal);
+      row.append(nameEl, am, foot);
+      box.append(row);
+    });
+    renderPayer(); updateQuote();
+  }
+  function renderPayer(){
+    const sel=$("f-pagatore"); sel.textContent="";
+    const list=partList();
+    list.forEach(p=>{
+      const o=document.createElement("option"); o.value=p.key;
+      o.textContent = p.io ? p.nome+" (io)" : (p.nome || "Persona in più "+(p.idx+1)); sel.append(o);
+    });
+    const o=document.createElement("option"); o.value="comune"; o.textContent="Cassa comune (nessun debito)"; sel.append(o);
+    if(payerKey!=="comune" && !list.some(p=>p.key===payerKey)) payerKey = list.some(p=>p.io) ? ME : (list[0] ? list[0].key : "comune");
+    sel.value = payerKey;
+  }
+  $("f-pagatore").addEventListener("change",()=>{ payerKey=$("f-pagatore").value; updateQuote(); });
+
+  function updateQuote(){
+    const list = partList();
+    const n = nPersone();
+    const sum = $("split-sum"); sum.textContent=""; sum.className="hint";
+    if(n!==null && n<3){
+      const missing = n - famSel.size;
+      $("fam-hint").textContent = missing>0
+        ? "Fra chi si divide? Tocca "+n+" nomi"+(famSel.size ? " (manca "+(missing===1?"ancora uno":missing)+")" : "")
+        : "Divisa fra "+[...famSel].join(" e ");
+    }
+    const c = parseAmount($("f-importo").value);
+    const extras = list.map(p=> modo==="extra" ? parseExtra(extraBy[p.key]) : 0);
+    const bad = extras.some(x=>Number.isNaN(x));
+    let quote = null;
+    if(!n){ sum.className="hint err"; sum.textContent="Scrivi fra quante persone si divide: da 2 a 20."; }
+    else if(list.length!==n){ /* scelta incompleta: il messaggio e' sopra i nomi */ }
+    else if(bad){ sum.className="hint err"; sum.textContent="Un extra non è un importo valido: scrivilo come 4,50."; }
+    else if(c!==null){
+      const r = computeQuote(c, extras);
+      if(r.common<0){ sum.className="hint err"; sum.textContent="Gli extra ("+fmt(r.sumEx)+") superano il totale dello scontrino."; }
+      else {
+        quote = r.quote;
+        const b1=document.createElement("b"); b1.textContent=fmt(r.common);
+        const b2=document.createElement("b"); b2.textContent=fmt(r.base);
+        sum.append(document.createTextNode(r.sumEx ? "Parte comune " : "Totale "), b1, document.createTextNode(" ÷ "+n+" = "), b2,
+          document.createTextNode(r.sumEx ? " a testa, più gli extra di ciascuno." : " a testa."));
+      }
+    }
+    const payer = list.find(p=>p.key===payerKey);
+    const payerIsMe = payer && payer.io;
+    list.forEach((p,i)=>{
+      const qb=$("p-q-"+p.key); if(qb) qb.textContent = quote ? fmt(quote[i]) : "—";
+      const l=$("p-sal-l-"+p.key), t=$("p-sal-t-"+p.key);
+      if(!l) return;
+      let text="";
+      if(payer && p.key!==payer.key){
+        if(payerIsMe) text = (p.nome||"Ha")+(p.nome?" ha saldato":" saldato");
+        else if(p.io) text = "Ho saldato con "+(payer.nome||"chi ha pagato");
+      }
+      l.hidden=!text; t.textContent=text;
+    });
+    return quote;
+  }
+
+  // --- Dare / avere per le spese non divise ---
+  function syncExtra(){
+    const div = $("f-divisa").checked;
+    $("split").hidden = !div;
+    $("mov-block").hidden = div;
+    [...$("seg").children].forEach(b=>b.setAttribute("aria-checked", String(b.dataset.v===mov)));
+    const on = mov!=="nessuno";
+    $("f-chi").disabled = !on; $("f-mov").disabled = !on; $("f-saldato").disabled = !on;
+    $("mov-row").classList.toggle("off", !on);
+    $("chi-l").textContent = mov==="dare" ? "A chi" : mov==="avere" ? "Da chi" : "A / da chi";
+    if(on && movAuto){ const c=parseAmount($("f-importo").value); $("f-mov").value = c===null ? "" : toField(c); }
+    if(!on) $("f-mov").value="";
+    if(div) updateQuote();
+  }
+  [...$("seg").children].forEach(b=>b.addEventListener("click",()=>{ mov=b.dataset.v; movAuto=true; syncExtra(); }));
+  [...$("modo").children].forEach(b=>b.addEventListener("click",()=>{ modo=b.dataset.m; renderSplit(); }));
+  $("f-divisa").addEventListener("change",()=>{ renderSplit(); syncExtra(); });
+  $("f-persone").addEventListener("input",()=>{
+    const n=nPersone();
+    if(n!==null && n<3){ while(famSel.size>n){ famSel.delete([...famSel][0]); } }
+    renderSplit();
+  });
+  $("f-importo").addEventListener("input", syncExtra);
+  $("f-mov").addEventListener("input", ()=>{ movAuto = $("f-mov").value.trim()===""; });
+
+  function setStatus(kind, text){ $("status").className = "status "+kind; $("status-t").textContent = text; }
+  function msg(text, kind){ const m=$("msg"); m.textContent=text||""; m.className="msg "+(kind||""); }
+
+  function renderNomi(){
+    const set = new Set();
+    all.forEach(r=>{
+      if(r.persona) set.add(r.persona);
+      if(Array.isArray(r.partecipanti)) r.partecipanti.forEach(p=>{ if(!p.io && p.nome) set.add(p.nome); });
+    });
+    FAMIGLIA.slice(1).forEach(f=>set.add(f));
+    const dl = $("nomi"); dl.textContent="";
+    [...set].sort((a,b)=>a.localeCompare(b,"it")).forEach(n=>{ const o=document.createElement("option"); o.value=n; dl.append(o); });
+  }
+  function renderSaldi(){
+    const net = {};
+    all.forEach(r=>debtsOf(r).forEach(d=>{
+      if(d.saldato) return;
+      const k=d.persona.trim(); if(!k) return;
+      net[k]=(net[k]||0)+(d.tipo==="avere"?d.cent:-d.cent);
+    }));
+    const rows = Object.entries(net).filter(([,v])=>v!==0).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
+    const box=$("saldi-list"); box.textContent="";
+    rows.forEach(([n,v])=>{
+      const d=document.createElement("div"); d.className="saldo "+(v>0?"avere":"dare");
+      const t=document.createElement("span"); t.textContent = v>0 ? n+" ti deve" : "Devi a "+n;
+      const b=document.createElement("b"); b.textContent=fmt(Math.abs(v));
+      d.append(t,b); box.append(d);
+    });
+    $("saldi").hidden = !rows.length;
+  }
+
+  // --- Mese ---
+  function render(){
+    const mk = monthKey(cur);
+    $("month-t").textContent = cur.toLocaleDateString("it-IT",{month:"long",year:"numeric"});
+    const now = new Date(); now.setDate(1);
+    $("next").disabled = mk >= monthKey(now);
+
+    const rows = all.filter(r=>r.data.slice(0,7)===mk)
+      .sort((a,b)=> b.data.localeCompare(a.data) || String(b.creato).localeCompare(String(a.creato)));
+    const total = rows.reduce((s,r)=>s+r.centesimi,0);
+    $("total").textContent = fmt(total);
+    const quotaTot = rows.reduce((s,r)=>s+myQuota(r),0);
+    const qt=$("quota-tot"); qt.textContent="";
+    if(quotaTot!==total){ const b=document.createElement("b"); b.textContent=fmt(quotaTot); qt.append(document.createTextNode("di cui tua quota "), b); }
+    qt.hidden = quotaTot===total;
+
+    const prev = new Date(cur); prev.setMonth(prev.getMonth()-1);
+    const pTot = all.filter(r=>r.data.slice(0,7)===monthKey(prev)).reduce((s,r)=>s+r.centesimi,0);
+    const d = $("delta"); d.textContent=""; d.className="delta";
+    if(pTot>0){
+      const diff = total - pTot;
+      d.className = "delta " + (diff>0?"up":"down");
+      const b = document.createElement("b"); b.textContent = (diff>0?"+":"−")+Math.round(Math.abs(diff)/pTot*100)+"%";
+      d.append(b, document.createTextNode(" rispetto a " + prev.toLocaleDateString("it-IT",{month:"long"}) + " (" + fmt(pTot) + ")"));
+    }
+
+    const by = {}; rows.forEach(r=>{ by[r.categoria]=(by[r.categoria]||0)+r.centesimi; });
+    const list = Object.entries(by).sort((a,b)=>b[1]-a[1]);
+    const bar=$("bar"), cats=$("cats"); bar.textContent=""; cats.textContent="";
+    list.forEach(([k,v])=>{
+      const col="var(--c-"+(CAT[k]?k:"altro")+")";
+      const seg=document.createElement("span"); seg.style.width=(v/total*100)+"%"; seg.style.background=col; seg.title=(CAT[k]?.n||k)+": "+fmt(v); bar.append(seg);
+      const n=document.createElement("div"); n.className="n";
+      const sw=document.createElement("span"); sw.className="sw"; sw.style.background=col;
+      n.append(sw, document.createTextNode(CAT[k]?.n||k));
+      const val=document.createElement("div"); val.className="v"; val.textContent=fmt(v);
+      const p=document.createElement("div"); p.className="p"; p.textContent=Math.round(v/total*100)+"%";
+      cats.append(n,val,p);
+    });
+    bar.hidden = cats.hidden = !list.length;
+    renderSaldi(); renderNomi();
+
+    const box = $("list"); box.textContent="";
+    if(!rows.length){
+      const e=document.createElement("div"); e.className="empty";
+      const s=document.createElement("strong");
+      s.textContent = db ? "Nessuna spesa a "+cur.toLocaleDateString("it-IT",{month:"long"}) : "Archivio non ancora collegato";
+      e.append(s, document.createTextNode(db ? "Inserisci importo e categoria qui sopra: la spesa compare qui e resta salvata su computer e telefono." : "Attendi qualche secondo. Se il messaggio resta, ricarica la pagina."));
+      box.append(e);
+    } else {
+      let lastDay=null, dayBox=null, dayTot=0, dayTotEl=null;
+      rows.forEach(r=>{
+        if(r.data!==lastDay){
+          if(dayTotEl) dayTotEl.textContent=fmt(dayTot);
+          lastDay=r.data; dayTot=0;
+          dayBox=document.createElement("div"); dayBox.className="day";
+          const h=document.createElement("div"); h.className="day-h";
+          const a=document.createElement("span"); a.textContent=new Date(r.data+"T12:00:00").toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"});
+          dayTotEl=document.createElement("span");
+          h.append(a,dayTotEl); dayBox.append(h); box.append(dayBox);
+        }
+        dayTot+=r.centesimi;
+        const it=document.createElement("button"); it.type="button"; it.className="item";
+        it.setAttribute("aria-label","Modifica spesa di "+fmt(r.centesimi));
+        const sw=document.createElement("span"); sw.className="sw"; sw.style.background="var(--c-"+(CAT[r.categoria]?r.categoria:"altro")+")";
+        const t=document.createElement("span"); t.className="t";
+        const c=document.createElement("span"); c.className="c"; c.textContent=CAT[r.categoria]?.n||r.categoria; t.append(c);
+        if(r.nota){ const no=document.createElement("span"); no.className="no"; no.textContent=r.nota; t.append(no); }
+        const tags=document.createElement("span"); tags.className="tags";
+        const tag=(txt,cls)=>{ const g=document.createElement("span"); g.className="tag"+(cls?" "+cls:""); g.textContent=txt; tags.append(g); };
+        if(r.divisa && Array.isArray(r.partecipanti)){
+          tag(r.partecipanti.map(p=>nomeDi(p)+" "+fmt(p.quota)).join(" · "));
+          if(!r.pagatore) tag("Cassa comune");
+        } else if(r.divisa && r.persone>=2){
+          tag("÷ "+r.persone+" · tua quota "+fmt(myQuota(r)));
+        }
+        debtsOf(r).forEach(dd=>tag((dd.tipo==="dare"?"Dare a ":"Avere da ")+dd.persona+" "+fmt(dd.cent)+(dd.saldato?" · saldato":""), dd.tipo+(dd.saldato?" chiuso":"")));
+        if(tags.childNodes.length) t.append(tags);
+        const a=document.createElement("span"); a.className="a"; a.textContent=fmt(r.centesimi);
+        it.append(sw,t,a);
+        it.addEventListener("click",()=>startEdit(r));
+        dayBox.append(it);
+      });
+      if(dayTotEl) dayTotEl.textContent=fmt(dayTot);
+    }
+    $("export").hidden = !rows.length;
+    $("copy").hidden = !rows.length;
+  }
+
+  // --- Modifica ---
+  function clearSplit(){
+    modo="uguali"; $("f-persone").value=3; famSel=new Set(); altri=[]; extraBy={}; salBy={}; payerKey=ME;
+  }
+  function startEdit(r){
+    editing = r.id; confirming=false;
+    $("f-importo").value = toField(r.centesimi);
+    $("f-data").value = r.data; $("f-nota").value = r.nota||"";
+    selCat = CAT[r.categoria]?r.categoria:"altro"; renderChips();
+    clearSplit();
+    $("f-divisa").checked = !!r.divisa;
+    if(r.divisa && Array.isArray(r.partecipanti)){
+      const ps = r.partecipanti.map(p=>({...p, nome:nomeDi(p)}));
+      const n = ps.length;
+      $("f-persone").value = n;
+      const keyOf = {};
+      if(n<3){ ps.forEach(p=>{ if(FAMIGLIA.includes(p.nome)){ famSel.add(p.nome); keyOf[p.nome]=p.nome; } }); }
+      else {
+        let i=0;
+        ps.forEach(p=>{ if(FAMIGLIA.includes(p.nome)) keyOf[p.nome]=p.nome; else { altri[i]=p.nome; keyOf[p.nome]="altro"+i; i++; } });
+        $("f-persone").value = 3 + i;
+      }
+      ps.forEach(p=>{ const k=keyOf[p.nome]; if(!k) return; if(p.extraCentesimi>0) extraBy[k]=toField(p.extraCentesimi); salBy[k]=!!p.saldato; });
+      modo = r.modo || (ps.some(p=>p.extraCentesimi>0) ? "extra" : "uguali");
+      const pag = r.pagatore==="Io" ? ME : r.pagatore;
+      payerKey = pag ? (keyOf[pag] || ME) : "comune";
+    } else if(r.divisa && r.persone>=2){
+      $("f-persone").value = r.persone;
+    }
+    mov = (!Array.isArray(r.partecipanti) && (r.movimento==="dare"||r.movimento==="avere")) ? r.movimento : "nessuno";
+    $("f-chi").value = r.persona||""; $("f-saldato").checked = !!r.saldato;
+    movAuto = false; $("f-mov").value = r.movCentesimi>0 ? toField(r.movCentesimi) : "";
+    renderSplit(); syncExtra();
+    $("form").classList.add("editing"); $("form-t").textContent="Modifica spesa";
+    $("save").textContent="Salva modifiche"; $("del").hidden=false; $("cancel").hidden=false;
+    $("confirm-slot").textContent=""; msg("");
+    $("form").scrollIntoView({behavior:"smooth",block:"start"});
+    $("f-importo").focus({preventScroll:true});
+  }
+  function resetForm(){
+    editing=null; confirming=false;
+    $("f-importo").value=""; $("f-nota").value="";
+    $("f-divisa").checked=false; clearSplit();
+    mov="nessuno"; movAuto=true; $("f-chi").value=""; $("f-mov").value=""; $("f-saldato").checked=false;
+    renderSplit(); syncExtra();
+    $("form").classList.remove("editing"); $("form-t").textContent="Nuova spesa";
+    $("save").textContent="Registra spesa"; $("del").hidden=true; $("cancel").hidden=true;
+    $("confirm-slot").textContent="";
+  }
+  $("cancel").addEventListener("click",()=>{ resetForm(); msg(""); });
+
+  $("del").addEventListener("click",()=>{
+    if(!editing || confirming) return;
+    confirming=true;
+    const slot=$("confirm-slot"); slot.textContent="";
+    const box=document.createElement("div"); box.className="confirm";
+    box.append(document.createTextNode("Eliminare questa spesa? Non si può annullare."));
+    const yes=document.createElement("button"); yes.type="button"; yes.className="del"; yes.textContent="Sì, elimina";
+    const no=document.createElement("button"); no.type="button"; no.className="ghost"; no.textContent="No";
+    no.addEventListener("click",()=>{ confirming=false; slot.textContent=""; });
+    yes.addEventListener("click", async ()=>{
+      yes.disabled=true;
+      try{ const id=editing; resetForm(); msg("Spesa eliminata.","ok"); await deleteDoc(doc(db,"spese",id)); }
+      catch(e){ msg("Eliminazione non riuscita. Riprova tra poco.","err"); yes.disabled=false; }
+    });
+    box.append(yes,no); slot.append(box);
+  });
+
+  $("form").addEventListener("submit", async ev=>{
+    ev.preventDefault();
+    if(!db) return;
+    const c = parseAmount($("f-importo").value);
+    if(c===null){ msg("Scrivi il totale in euro, per esempio 12,50.","err"); $("f-importo").focus(); return; }
+    const data = $("f-data").value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(data)){ msg("Scegli la data della spesa.","err"); return; }
+    const body = { data, centesimi:c, categoria:selCat, nota:$("f-nota").value.trim().slice(0,120),
+      divisa:false, modo:null, persone:null, partecipanti:null, pagatore:"",
+      movimento:"nessuno", persona:"", movCentesimi:0, saldato:false };
+
+    if($("f-divisa").checked){
+      const n = nPersone();
+      if(!n){ msg("Scrivi fra quante persone si divide: da 2 a 20.","err"); $("f-persone").focus(); return; }
+      const list = partList();
+      if(list.length!==n){ msg("Scegli fra chi si divide la spesa.","err"); return; }
+      if(list.some(p=>!p.nome)){ msg("Scrivi il nome di ogni persona in più.","err"); return; }
+      const low = list.map(p=>p.nome.toLowerCase());
+      if(new Set(low).size!==low.length){ msg("Due persone hanno lo stesso nome: cambiane uno.","err"); return; }
+      const extras = list.map(p=> modo==="extra" ? parseExtra(extraBy[p.key]) : 0);
+      if(extras.some(x=>Number.isNaN(x))){ msg("Un extra non è un importo valido: scrivilo come 4,50.","err"); return; }
+      const r = computeQuote(c, extras);
+      if(r.common<0){ msg("Gli extra superano il totale dello scontrino.","err"); return; }
+      const payer = list.find(p=>p.key===payerKey);
+      Object.assign(body, { divisa:true, modo, persone:n,
+        partecipanti: list.map((p,i)=>({nome:p.nome, io:!!p.io, extraCentesimi:extras[i], quota:r.quote[i], saldato:!!salBy[p.key]})),
+        pagatore: payer ? payer.nome : "" });
+    } else if(mov!=="nessuno"){
+      const persona = $("f-chi").value.trim().slice(0,40);
+      if(!persona){ msg(mov==="dare" ? "Scrivi a chi devi dare." : "Scrivi da chi devi avere.","err"); $("f-chi").focus(); return; }
+      const movC = parseAmount($("f-mov").value);
+      if(movC===null){ msg("Scrivi quanto devi "+(mov==="dare"?"dare":"avere")+", per esempio 15,00.","err"); $("f-mov").focus(); return; }
+      Object.assign(body, {movimento:mov, persona, movCentesimi:movC, saldato:$("f-saldato").checked});
+    }
+
+    // Non si aspetta il server: senza rete la spesa resta sul telefono e parte appena la rete torna.
+    let scrittura;
+    if(editing){ scrittura = updateDoc(doc(db,"spese",editing), body); msg("Modifica salvata.","ok"); }
+    else { body.creato = new Date().toISOString(); scrittura = setDoc(doc(collection(db,"spese")), body); msg(fmt(c)+" registrati in "+CAT[selCat].n+".","ok"); }
+    scrittura.catch(e=>msg(e && e.code==="permission-denied"
+      ? "Questo account non può registrare spese: controlla le regole di Firestore."
+      : "Salvataggio non riuscito ("+(e && e.code || "errore")+"). Riprova.","err"));
+    const d = new Date(data+"T12:00:00"); d.setDate(1); cur = d;
+    resetForm(); render();
+  });
+
+  $("prev").addEventListener("click",()=>{ cur.setMonth(cur.getMonth()-1); render(); });
+  $("next").addEventListener("click",()=>{ cur.setMonth(cur.getMonth()+1); render(); });
+
+  // Tabella del mese: una colonna per persona e la riga dei totali
+  function tabellaMese(){
+    const mk = monthKey(cur);
+    const rows = all.filter(r=>r.data.slice(0,7)===mk).sort((a,b)=>a.data.localeCompare(b.data));
+    const SENZA = "Altri (senza nome)";
+    const quoteDi = r => {
+      const m = {};
+      if(r.divisa && Array.isArray(r.partecipanti)) r.partecipanti.forEach(p=>{ m[nomeDi(p)] = (m[nomeDi(p)]||0) + p.quota; });
+      else if(r.divisa && r.persone>=2){ m[ME] = myQuota(r); m[SENZA] = r.centesimi - m[ME]; }   // vecchie spese divise senza nomi
+      else m[ME] = r.centesimi;                                                                    // spesa non divisa: tutta tua
+      return m;
+    };
+    const perRiga = rows.map(quoteDi);
+    // la famiglia sempre, poi gli altri nomi nell'ordine in cui compaiono
+    const nomi = FAMIGLIA.slice();
+    perRiga.forEach(m=>Object.keys(m).forEach(n=>{ if(!nomi.includes(n)) nomi.push(n); }));
+    const tot = Object.fromEntries(nomi.map(n=>[n,0]));
+    // saldi dal tuo punto di vista: + ti deve, − gli devi; i debiti gia' saldati non contano
+    const perSaldo = rows.map(r=>{
+      const s = {};
+      debtsOf(r).forEach(d=>{ if(!d.saldato) s[d.persona] = (s[d.persona]||0) + (d.tipo==="avere" ? d.cent : -d.cent); });
+      return s;
+    });
+    const conSaldo = nomi.filter(n=>n!==ME && n!=="Altri (senza nome)");
+    perSaldo.forEach(s=>Object.keys(s).forEach(n=>{ if(!conSaldo.includes(n)) conSaldo.push(n); }));
+    const totS = Object.fromEntries(conSaldo.map(n=>[n,0]));
+    let totMio = 0;
+    const segno = c => (c<0?"-":"")+toField(Math.abs(c));
+    const primaSaldo = 5 + nomi.length;   // indice della prima colonna di saldo
+    const righe = [["Data","Categoria","Nota","Totale scontrino","Pagato da"].concat(nomi, conSaldo.map(n=>"Saldo "+n), ["Tuo saldo"])];
+    rows.forEach((r,i)=>{
+      const m = perRiga[i], s = perSaldo[i];
+      nomi.forEach(n=>{ tot[n] += m[n]||0; });
+      let mio = 0;
+      conSaldo.forEach(n=>{ totS[n] += s[n]||0; mio += s[n]||0; });
+      totMio += mio;
+      const pag = Array.isArray(r.partecipanti) ? (r.pagatore ? (r.pagatore==="Io"?ME:r.pagatore) : "Cassa comune") : "";
+      righe.push([r.data, CAT[r.categoria]?.n||r.categoria, r.nota||"", toField(r.centesimi), pag]
+        .concat(nomi.map(n=> m[n] ? toField(m[n]) : ""), conSaldo.map(n=> s[n] ? segno(s[n]) : ""), [mio ? segno(mio) : ""]));
+    });
+    righe.push([]);
+    righe.push(["TOTALE","","",toField(rows.reduce((s,r)=>s+r.centesimi,0)),""]
+      .concat(nomi.map(n=>toField(tot[n])), conSaldo.map(n=>segno(totS[n])), [segno(totMio)]));
+    return {mk, righe, primaSaldo};
+  }
+
+  $("export").addEventListener("click", async ()=>{
+    const {mk, righe} = tabellaMese();
+    const q = s => /[";\r\n]/.test(s) ? '"'+String(s).replace(/"/g,'""')+'"' : String(s);
+    const testo = "\ufeff" + righe.map(r=>r.map(q).join(";")).join("\r\n");
+    scarica("spese-"+mk+".csv", testo, "text/csv;charset=utf-8");
+    msg("CSV salvato nella cartella Download.","ok");
+  });
+
+  // Copia per Google Fogli: colonne separate da tabulazioni, si incolla nella cella A1
+  $("copy").addEventListener("click", ()=>{
+    const {righe, primaSaldo} = tabellaMese();
+    const pulito = s => String(s).replace(/[\t\r\n]+/g," ");
+    const testo = righe.map(r=>r.map(pulito).join("\t")).join("\n");
+    // versione colorata: Google Fogli tiene i colori quando incolli una tabella
+    const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const ultima = righe.length-1;
+    const html = "<table>" + righe.map((r,ri)=>"<tr>"+r.map((c,ci)=>{
+      let st = "";
+      if(ri===0 || ri===ultima) st += "font-weight:bold;";
+      if(ri>0 && ci>=primaSaldo && c){ st += c.startsWith("-") ? "color:#C62828;" : "color:#1B7F4B;"; }
+      return "<td"+(st?' style="'+st+'"':"")+">"+esc(c)+"</td>";
+    }).join("")+"</tr>").join("") + "</table>";
+    const slot = $("copy-slot"); slot.textContent="";
+    const fallback = ()=>{
+      const ta=document.createElement("textarea"); ta.id="copy-area"; ta.readOnly=true; ta.value=testo; ta.rows=6;
+      ta.setAttribute("aria-label","Tabella da copiare");
+      const h=document.createElement("p"); h.className="hint";
+      h.textContent="La copia automatica non è riuscita: il testo qui sotto è già selezionato, copialo con Ctrl+C (o tieni premuto e scegli Copia sul telefono).";
+      slot.append(h, ta); ta.focus(); ta.select();
+    };
+    const ok = colori=>{
+      const h=document.createElement("p"); h.className="hint ok";
+      h.textContent="Copiato"+(colori?" con i colori":"")+". In Google Fogli clicca la cella A1 e incolla (Ctrl+V).";
+      slot.append(h);
+    };
+    const soloTesto = ()=>{ try{ navigator.clipboard.writeText(testo).then(()=>ok(false), fallback); } catch(e){ fallback(); } };
+    try{
+      if(window.ClipboardItem && navigator.clipboard.write){
+        navigator.clipboard.write([new ClipboardItem({
+          "text/html": new Blob([html],{type:"text/html"}),
+          "text/plain": new Blob([testo],{type:"text/plain"}),
+        })]).then(()=>ok(true), soloTesto);
+      } else soloTesto();
+    } catch(e){ soloTesto(); }
+  });
+
+  $("f-data").value = todayISO();
+  renderChips(); renderSplit(); syncExtra(); render();
+
+  // --- File da scaricare ---
+  function scarica(nome, testo, tipo){
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([testo], {type:tipo}));
+    a.download = nome; document.body.append(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  // --- Accesso con Google e archivio Firestore ---
+  if(!firebaseConfig.apiKey || firebaseConfig.apiKey==="INCOLLA_QUI"){
+    $("login-p").textContent = "Manca la configurazione di Firebase: va incollata nel file firebase-config.js.";
+    $("login-btn").hidden = true;
+    return;
+  }
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  // copia locale del database: l'app si apre e registra anche senza rete
+  const fs = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  let stopSnap = null;
+
+  $("login-btn").addEventListener("click", async ()=>{
+    $("login-msg").textContent = "";
+    try { await signInWithPopup(auth, provider); }
+    catch(e){
+      const code = e && e.code;
+      if(code==="auth/popup-closed-by-user" || code==="auth/cancelled-popup-request") return;
+      if(code==="auth/popup-blocked" || code==="auth/operation-not-supported-in-this-environment"){
+        try { await signInWithRedirect(auth, provider); return; } catch(_) {}
+      }
+      $("login-msg").textContent = code==="auth/unauthorized-domain"
+        ? "Questo indirizzo non è fra i domini autorizzati di Firebase (Authentication → Impostazioni)."
+        : "Accesso non riuscito ("+(code || "errore")+"). Riprova.";
+    }
+  });
+  getRedirectResult(auth).catch(()=>{});
+  $("logout").addEventListener("click", ()=>signOut(auth));
+
+  onAuthStateChanged(auth, user=>{
+    if(stopSnap){ stopSnap(); stopSnap = null; }
+    if(!user){
+      db = null; all = [];
+      $("login").hidden = false; $("app").hidden = true; $("save").disabled = true;
+      return;
+    }
+    $("login").hidden = true; $("app").hidden = false;
+    $("account").textContent = user.email || "";
+    db = fs; $("save").disabled = false;
+    setStatus("wait", "Caricamento…");
+    render();
+    stopSnap = onSnapshot(collection(fs,"spese"), { includeMetadataChanges: true }, snap=>{
+      all = snap.docs.map(d=>({id:d.id, ...d.data()}))
+        .filter(r=>typeof r.centesimi==="number" && typeof r.data==="string");
+      if(snap.metadata.hasPendingWrites) setStatus("wait", "Da inviare: partono appena c'è rete");
+      else if(snap.metadata.fromCache) setStatus("wait", "Senza rete: vedi l'ultima copia salvata");
+      else setStatus("ok", all.length ? all.length+" spese in archivio" : "Archivio collegato");
+      render();
+    }, e=>{
+      db = null; $("save").disabled = true;
+      setStatus("err", e && e.code==="permission-denied"
+        ? "Questo account non è autorizzato: esci e accedi con il Gmail giusto"
+        : "Archivio non raggiungibile ("+(e && e.code || "errore")+")");
+      render();
+    });
+  });
+
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(()=>{});
+})();
+</script>
+</body>
+</html>
