@@ -41,6 +41,21 @@
 body{margin:0}
 [hidden]{display:none!important}
 .status.wait .dot{background:#C98A0B}
+.saldo .destra{display:flex;align-items:baseline;gap:14px}
+.salda-btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600}
+.salda-form{display:flex;flex-direction:column;gap:10px;background:var(--bg);border-radius:12px;padding:12px;margin-block:4px 8px}
+.salda-form .row{grid-template-columns:1fr 1fr}
+.salda-form .acts{display:flex;gap:10px;flex-wrap:wrap}
+.salda-form .primary{padding:10px 14px;font-size:15px}
+.salda-form .ghost{padding:9px 14px}
+#storico summary{cursor:pointer;font-size:13px;color:var(--accent);font-weight:600;padding-block:4px}
+.pag{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;padding-block:8px;border-bottom:1px solid var(--line)}
+.pag:last-child{border-bottom:0}
+.pag .q{color:var(--muted);font-size:12px}
+.pag b{font-family:var(--mono)}
+.pag .x{background:none;border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:12px;color:var(--danger)}
+.pag .conf{display:flex;gap:8px;align-items:center;font-size:13px}
+.pag .conf .del{background:var(--danger);color:#fff;border:0;border-radius:8px;padding:5px 10px;font-weight:600}
 .account{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);flex-wrap:wrap}
 .account .link{font-size:13px;padding:2px 0}
 .login{max-width:380px;margin:0 auto;padding-inline:16px;padding-block:18vh 40px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
@@ -215,6 +230,11 @@ input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid
   <section class="saldi" id="saldi" aria-label="Saldi aperti" hidden>
     <h3>Saldi aperti</h3>
     <div id="saldi-list"></div>
+    <p class="hint" id="saldi-msg" role="status"></p>
+    <details id="storico" hidden>
+      <summary id="storico-t">Pagamenti registrati</summary>
+      <div id="storico-list"></div>
+    </details>
   </section>
 
   <form id="form" autocomplete="off" novalidate>
@@ -310,7 +330,7 @@ input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -350,6 +370,10 @@ import { firebaseConfig } from "./firebase-config.js";
   let altri = [];           // nomi delle persone oltre i tre
   let extraBy = {}, salBy = {};   // per chiave persona: testo dell'extra, saldato
   let payerKey = ME;        // chiave persona, oppure "comune"
+  // Pagamenti che chiudono i saldi: {data, persona, verso: "ricevuto"|"dato", centesimi, nota}
+  let pagamenti = [];
+  let saldaAperto = null, saldaVal = {};   // persona col modulo aperto e cio' che c'e' scritto
+  let pagConferma = null, storicoAperto = false, pagamentiBloccati = false;
 
   function parseAmount(s){
     s = String(s).trim().replace(/\s|€/g,"");
@@ -394,7 +418,10 @@ import { firebaseConfig } from "./firebase-config.js";
   function debtsOf(r){
     if(r.divisa && Array.isArray(r.partecipanti)){
       if(!r.pagatore) return [];
-      const payerP = r.partecipanti.find(p=>p.nome===r.pagatore || (p.io && (r.pagatore==="Io" || r.pagatore===ME)));
+      const pagatoIo = r.pagatore==="Io" || r.pagatore===ME;
+      const payerP = r.partecipanti.find(p=>p.nome===r.pagatore || (p.io && pagatoIo));
+      // hai pagato tu una spesa divisa fra altri: ognuno ti deve la sua quota intera
+      if(!payerP && pagatoIo) return r.partecipanti.filter(p=>p.quota>0).map(p=>({persona:p.nome, tipo:"avere", cent:p.quota, saldato:!!p.saldato}));
       if(!payerP) return [];
       if(payerP.io) return r.partecipanti.filter(p=>!p.io && p.quota>0).map(p=>({persona:p.nome, tipo:"avere", cent:p.quota, saldato:!!p.saldato}));
       const me = r.partecipanti.find(p=>p.io);
@@ -476,11 +503,19 @@ import { firebaseConfig } from "./firebase-config.js";
       const o=document.createElement("option"); o.value=p.key;
       o.textContent = p.io ? p.nome+" (io)" : (p.nome || "Persona in più "+(p.idx+1)); sel.append(o);
     });
+    // Raffaele puo' aver pagato anche una spesa divisa solo fra gli altri
+    if(!list.some(p=>p.io)){
+      const m=document.createElement("option"); m.value=ME; m.textContent=ME+" (io) – non partecipa alla spesa"; sel.append(m);
+    }
     const o=document.createElement("option"); o.value="comune"; o.textContent="Cassa comune (nessun debito)"; sel.append(o);
-    if(payerKey!=="comune" && !list.some(p=>p.key===payerKey)) payerKey = list.some(p=>p.io) ? ME : (list[0] ? list[0].key : "comune");
+    if(payerKey!=="comune" && payerKey!==ME && !list.some(p=>p.key===payerKey)) payerKey = list.some(p=>p.io) ? ME : (list[0] ? list[0].key : "comune");
     sel.value = payerKey;
   }
   $("f-pagatore").addEventListener("change",()=>{ payerKey=$("f-pagatore").value; updateQuote(); });
+  // chi ha pagato: una delle persone della divisione, oppure Raffaele anche se non partecipa
+  function pagatoreDi(list){
+    return list.find(p=>p.key===payerKey) || (payerKey===ME ? {key:ME, nome:ME, io:true, fuori:true} : null);
+  }
 
   function updateQuote(){
     const list = partList();
@@ -510,7 +545,7 @@ import { firebaseConfig } from "./firebase-config.js";
           document.createTextNode(r.sumEx ? " a testa, più gli extra di ciascuno." : " a testa."));
       }
     }
-    const payer = list.find(p=>p.key===payerKey);
+    const payer = pagatoreDi(list);
     const payerIsMe = payer && payer.io;
     list.forEach((p,i)=>{
       const qb=$("p-q-"+p.key); if(qb) qb.textContent = quote ? fmt(quote[i]) : "—";
@@ -564,23 +599,137 @@ import { firebaseConfig } from "./firebase-config.js";
     const dl = $("nomi"); dl.textContent="";
     [...set].sort((a,b)=>a.localeCompare(b,"it")).forEach(n=>{ const o=document.createElement("option"); o.value=n; dl.append(o); });
   }
-  function renderSaldi(){
+  // Saldo netto con ciascuno, dal tuo punto di vista: + ti deve, - gli devi.
+  // Contano i debiti delle spese non spuntati come saldati, meno i pagamenti registrati.
+  function saldiNetti(){
     const net = {};
     all.forEach(r=>debtsOf(r).forEach(d=>{
       if(d.saldato) return;
       const k=d.persona.trim(); if(!k) return;
       net[k]=(net[k]||0)+(d.tipo==="avere"?d.cent:-d.cent);
     }));
+    pagamenti.forEach(p=>{
+      const k=(p.persona||"").trim(); if(!k || !(p.centesimi>0)) return;
+      net[k]=(net[k]||0)+(p.verso==="ricevuto" ? -p.centesimi : p.centesimi);
+    });
+    return net;
+  }
+  const dataBreve = iso => new Date(iso+"T12:00:00").toLocaleDateString("it-IT",{day:"numeric",month:"short",year:"numeric"});
+
+  function renderSaldi(){
+    const attivo = document.activeElement && document.activeElement.id;   // se stai scrivendo nel modulo, lo ritrovi
+    const net = saldiNetti();
     const rows = Object.entries(net).filter(([,v])=>v!==0).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
     const box=$("saldi-list"); box.textContent="";
+    if(saldaAperto && !rows.some(([n])=>n===saldaAperto)) saldaAperto = null;
     rows.forEach(([n,v])=>{
       const d=document.createElement("div"); d.className="saldo "+(v>0?"avere":"dare");
       const t=document.createElement("span"); t.textContent = v>0 ? n+" ti deve" : "Devi a "+n;
+      const dx=document.createElement("span"); dx.className="destra";
       const b=document.createElement("b"); b.textContent=fmt(Math.abs(v));
-      d.append(t,b); box.append(d);
+      dx.append(b);
+      if(db && !pagamentiBloccati){
+        const btn=document.createElement("button"); btn.type="button"; btn.className="salda-btn";
+        btn.textContent = saldaAperto===n ? "Chiudi" : "Salda";
+        btn.setAttribute("aria-expanded", String(saldaAperto===n));
+        btn.addEventListener("click",()=>{
+          if(saldaAperto===n){ saldaAperto=null; }
+          else { saldaAperto=n; saldaVal={imp:toField(Math.abs(v)), data:todayISO(), nota:""}; }
+          $("saldi-msg").textContent=""; renderSaldi();
+          if(saldaAperto) { const i=$("sp-imp"); if(i) i.focus(); }
+        });
+        dx.append(btn);
+      }
+      d.append(t,dx); box.append(d);
+      if(saldaAperto===n) box.append(moduloSalda(n, v));
     });
-    $("saldi").hidden = !rows.length;
+    if(!rows.length && pagamenti.length){
+      const p=document.createElement("p"); p.className="hint"; p.textContent="Tutto in pari: nessuno deve niente a nessuno."; box.append(p);
+    }
+    renderStorico();
+    $("saldi").hidden = !rows.length && !pagamenti.length;
+    if(attivo && attivo.startsWith("sp-") && $(attivo)) $(attivo).focus();
   }
+
+  // Modulo per registrare un pagamento: proposto il saldo intero, si puo' scrivere meno (acconto)
+  function moduloSalda(n, v){
+    const ricevuto = v>0;
+    const f=document.createElement("div"); f.className="salda-form";
+    const h=document.createElement("strong"); h.textContent = ricevuto ? "Quanto ti ha dato "+n+"?" : "Quanto hai dato a "+n+"?";
+    const row=document.createElement("div"); row.className="row";
+    const c1=document.createElement("div"); c1.className="field";
+    const l1=document.createElement("label"); l1.className="label"; l1.htmlFor="sp-imp"; l1.textContent="Importo";
+    const am=document.createElement("div"); am.className="amount";
+    const imp=document.createElement("input"); imp.id="sp-imp"; imp.inputMode="decimal"; imp.value=saldaVal.imp||"";
+    imp.addEventListener("input",()=>{ saldaVal.imp=imp.value; });
+    am.append(imp); c1.append(l1,am);
+    const c2=document.createElement("div"); c2.className="field";
+    const l2=document.createElement("label"); l2.className="label"; l2.htmlFor="sp-data"; l2.textContent="Quando";
+    const dt=document.createElement("input"); dt.id="sp-data"; dt.type="date"; dt.value=saldaVal.data||todayISO();
+    dt.addEventListener("input",()=>{ saldaVal.data=dt.value; });
+    c2.append(l2,dt);
+    row.append(c1,c2);
+    const c3=document.createElement("div"); c3.className="field";
+    const l3=document.createElement("label"); l3.className="label"; l3.htmlFor="sp-nota"; l3.textContent="Nota (facoltativa)";
+    const nota=document.createElement("input"); nota.id="sp-nota"; nota.maxLength=80; nota.placeholder="es. contanti, bonifico"; nota.value=saldaVal.nota||"";
+    nota.addEventListener("input",()=>{ saldaVal.nota=nota.value; });
+    c3.append(l3,nota);
+    const hint=document.createElement("p"); hint.className="hint";
+    hint.textContent="Il saldo intero è "+fmt(Math.abs(v))+". Se è un acconto, scrivi la cifra versata: il resto rimane da saldare.";
+    const acts=document.createElement("div"); acts.className="acts";
+    const ok=document.createElement("button"); ok.type="button"; ok.className="primary"; ok.textContent="Registra pagamento";
+    const no=document.createElement("button"); no.type="button"; no.className="ghost"; no.textContent="Annulla";
+    no.addEventListener("click",()=>{ saldaAperto=null; renderSaldi(); });
+    ok.addEventListener("click",()=>{
+      const c=parseAmount(imp.value);
+      if(c===null){ hint.className="hint err"; hint.textContent="Scrivi l'importo in euro, per esempio 25,00."; imp.focus(); return; }
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(dt.value)){ hint.className="hint err"; hint.textContent="Scegli la data del pagamento."; return; }
+      const body={ data:dt.value, persona:n, verso: ricevuto?"ricevuto":"dato", centesimi:c, nota:nota.value.trim().slice(0,80), creato:new Date().toISOString() };
+      setDoc(doc(collection(db,"pagamenti")), body).catch(e=>{
+        $("saldi-msg").className="hint err";
+        $("saldi-msg").textContent = e && e.code==="permission-denied"
+          ? "Pagamento non salvato: nelle regole di Firestore manca la parte dei pagamenti."
+          : "Pagamento non salvato ("+(e && e.code || "errore")+"). Riprova.";
+      });
+      saldaAperto=null;
+      $("saldi-msg").className="hint ok";
+      $("saldi-msg").textContent = (ricevuto ? n+" ti ha dato " : "Hai dato a "+n+" ")+fmt(c)+" il "+dataBreve(dt.value)+".";
+      renderSaldi();
+    });
+    acts.append(ok,no);
+    f.append(h,row,c3,hint,acts);
+    return f;
+  }
+
+  function renderStorico(){
+    const st=$("storico"), box=$("storico-list"); box.textContent="";
+    st.hidden = !pagamenti.length;
+    st.open = storicoAperto;
+    $("storico-t").textContent = "Pagamenti registrati ("+pagamenti.length+")";
+    pagamenti.slice().sort((a,b)=> b.data.localeCompare(a.data) || String(b.creato).localeCompare(String(a.creato))).forEach(p=>{
+      const r=document.createElement("div"); r.className="pag";
+      const t=document.createElement("span");
+      t.append(document.createTextNode((p.verso==="ricevuto" ? p.persona+" ti ha dato " : "Hai dato a "+p.persona+" ")));
+      const b=document.createElement("b"); b.textContent=fmt(p.centesimi); t.append(b);
+      const q=document.createElement("div"); q.className="q"; q.textContent=dataBreve(p.data)+(p.nota ? " · "+p.nota : "");
+      t.append(q);
+      r.append(t);
+      if(pagConferma===p.id){
+        const c=document.createElement("span"); c.className="conf"; c.append(document.createTextNode("Eliminare?"));
+        const y=document.createElement("button"); y.type="button"; y.className="del"; y.textContent="Sì";
+        const n=document.createElement("button"); n.type="button"; n.className="x"; n.style.color="inherit"; n.textContent="No";
+        y.addEventListener("click",()=>{ pagConferma=null; deleteDoc(doc(db,"pagamenti",p.id)).catch(()=>{ $("saldi-msg").className="hint err"; $("saldi-msg").textContent="Eliminazione non riuscita. Riprova."; }); });
+        n.addEventListener("click",()=>{ pagConferma=null; renderStorico(); });
+        c.append(y,n); r.append(c);
+      } else if(db) {
+        const x=document.createElement("button"); x.type="button"; x.className="x"; x.textContent="Elimina";
+        x.addEventListener("click",()=>{ pagConferma=p.id; renderStorico(); });
+        r.append(x);
+      }
+      box.append(r);
+    });
+  }
+  $("storico").addEventListener("toggle",()=>{ storicoAperto = $("storico").open; });
 
   // --- Mese ---
   function render(){
@@ -762,7 +911,7 @@ import { firebaseConfig } from "./firebase-config.js";
       if(extras.some(x=>Number.isNaN(x))){ msg("Un extra non è un importo valido: scrivilo come 4,50.","err"); return; }
       const r = computeQuote(c, extras);
       if(r.common<0){ msg("Gli extra superano il totale dello scontrino.","err"); return; }
-      const payer = list.find(p=>p.key===payerKey);
+      const payer = pagatoreDi(list);
       Object.assign(body, { divisa:true, modo, persone:n,
         partecipanti: list.map((p,i)=>({nome:p.nome, io:!!p.io, extraCentesimi:extras[i], quota:r.quote[i], saldato:!!salBy[p.key]})),
         pagatore: payer ? payer.nome : "" });
@@ -811,15 +960,29 @@ import { firebaseConfig } from "./firebase-config.js";
       debtsOf(r).forEach(d=>{ if(!d.saldato) s[d.persona] = (s[d.persona]||0) + (d.tipo==="avere" ? d.cent : -d.cent); });
       return s;
     });
+    // i pagamenti del mese: chi ti da' soldi riduce quello che ti deve, chi li riceve da te riduce quello che gli devi
+    const pagMese = pagamenti.filter(p=>p.data.slice(0,7)===mk);
     const conSaldo = nomi.filter(n=>n!==ME && n!=="Altri (senza nome)");
     perSaldo.forEach(s=>Object.keys(s).forEach(n=>{ if(!conSaldo.includes(n)) conSaldo.push(n); }));
+    pagMese.forEach(p=>{ if(!conSaldo.includes(p.persona)) conSaldo.push(p.persona); });
     const totS = Object.fromEntries(conSaldo.map(n=>[n,0]));
     let totMio = 0;
     const segno = c => (c<0?"-":"")+toField(Math.abs(c));
     const primaSaldo = 5 + nomi.length;   // indice della prima colonna di saldo
     const righe = [["Data","Categoria","Nota","Totale scontrino","Pagato da"].concat(nomi, conSaldo.map(n=>"Saldo "+n), ["Tuo saldo"])];
-    rows.forEach((r,i)=>{
-      const m = perRiga[i], s = perSaldo[i];
+    // spese e pagamenti in ordine di data
+    const voci = rows.map((r,i)=>({data:r.data, i})).concat(pagMese.map(p=>({data:p.data, p})))
+      .sort((a,b)=>a.data.localeCompare(b.data));
+    voci.forEach(v=>{
+      if(v.p){
+        const p = v.p, val = p.verso==="ricevuto" ? -p.centesimi : p.centesimi;
+        totS[p.persona] += val; totMio += val;
+        const testo = (p.verso==="ricevuto" ? p.persona+" ti ha dato" : "Hai dato a "+p.persona)+(p.nota ? " ("+p.nota+")" : "");
+        righe.push([p.data, "Pagamento", testo, "", ""]
+          .concat(nomi.map(()=>""), conSaldo.map(n=> n===p.persona ? segno(val) : ""), [segno(val)]));
+        return;
+      }
+      const r = rows[v.i], m = perRiga[v.i], s = perSaldo[v.i];
       nomi.forEach(n=>{ tot[n] += m[n]||0; });
       let mio = 0;
       conSaldo.forEach(n=>{ totS[n] += s[n]||0; mio += s[n]||0; });
@@ -903,29 +1066,31 @@ import { firebaseConfig } from "./firebase-config.js";
   const fs = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
-  let stopSnap = null;
+  let stopSnap = null, stopPag = null;
 
   $("login-btn").addEventListener("click", async ()=>{
     $("login-msg").textContent = "";
+    // Solo la finestrella di Google. Il metodo "redirect" su Android si blocca con
+    // "missing initial state": Chrome separa i dati di github.io da quelli di firebaseapp.com.
     try { await signInWithPopup(auth, provider); }
     catch(e){
       const code = e && e.code;
       if(code==="auth/popup-closed-by-user" || code==="auth/cancelled-popup-request") return;
-      if(code==="auth/popup-blocked" || code==="auth/operation-not-supported-in-this-environment"){
-        try { await signInWithRedirect(auth, provider); return; } catch(_) {}
-      }
-      $("login-msg").textContent = code==="auth/unauthorized-domain"
-        ? "Questo indirizzo non è fra i domini autorizzati di Firebase (Authentication → Impostazioni)."
+      $("login-msg").textContent =
+        code==="auth/unauthorized-domain"
+          ? "Questo indirizzo non è fra i domini autorizzati di Firebase (Authentication → Impostazioni)."
+        : (code==="auth/popup-blocked" || code==="auth/operation-not-supported-in-this-environment")
+          ? "Dall'icona la finestra di Google non si apre. Accedi una volta aprendo l'indirizzo dell'app in Chrome: poi anche l'icona risulta collegata."
         : "Accesso non riuscito ("+(code || "errore")+"). Riprova.";
     }
   });
-  getRedirectResult(auth).catch(()=>{});
   $("logout").addEventListener("click", ()=>signOut(auth));
 
   onAuthStateChanged(auth, user=>{
     if(stopSnap){ stopSnap(); stopSnap = null; }
+    if(stopPag){ stopPag(); stopPag = null; }
     if(!user){
-      db = null; all = [];
+      db = null; all = []; pagamenti = [];
       $("login").hidden = false; $("app").hidden = true; $("save").disabled = true;
       return;
     }
@@ -946,6 +1111,20 @@ import { firebaseConfig } from "./firebase-config.js";
       setStatus("err", e && e.code==="permission-denied"
         ? "Questo account non è autorizzato: esci e accedi con il Gmail giusto"
         : "Archivio non raggiungibile ("+(e && e.code || "errore")+")");
+      render();
+    });
+    // I pagamenti stanno in una raccolta loro: se le regole non la aprono, le spese funzionano lo stesso
+    pagamentiBloccati = false;
+    stopPag = onSnapshot(collection(fs,"pagamenti"), snap=>{
+      pagamenti = snap.docs.map(d=>({id:d.id, ...d.data()}))
+        .filter(p=>typeof p.centesimi==="number" && typeof p.data==="string" && p.persona);
+      render();
+    }, e=>{
+      pagamenti = []; pagamentiBloccati = true;
+      $("saldi-msg").className = "hint err";
+      $("saldi-msg").textContent = e && e.code==="permission-denied"
+        ? "Per registrare i pagamenti va aggiornata la regola di Firestore (vedi GUIDA.md)."
+        : "Pagamenti non raggiungibili ("+(e && e.code || "errore")+").";
       render();
     });
   });
